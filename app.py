@@ -1,40 +1,93 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-# App title
-st.title("COVID-19 Country Wise Tracker")
-
-# Load dataset
-data = pd.read_csv("covid_data.csv")
-
-# -----------------------------
-# USER INPUT SECTION
-# -----------------------------
-st.subheader("Search COVID Details by Country / Region")
-
-country = st.text_input(
-    "Enter Country/Region name (example: India, US, Brazil)"
+# ----------------------
+# Page Configuration
+# ----------------------
+st.set_page_config(
+    page_title="COVID-19 Dashboard",
+    layout="wide"
 )
 
-if country:
-    filtered_data = data[
-        data["Country/Region"].str.contains(country, case=False, na=False)
-    ]
+# ----------------------
+# Title
+# ----------------------
+st.title("🦠 COVID-19 Country Wise Dashboard")
+st.markdown("COVID-19 data analysis using tables and visualizations")
+st.markdown("---")
 
-    if filtered_data.empty:
-        st.error("No data found for this Country/Region")
-    else:
-        st.success(f"COVID-19 details for {country}")
-        st.dataframe(filtered_data)
+# ----------------------
+# Load Dataset
+# ----------------------
+@st.cache_data
+def load_data():
+    df = pd.read_csv("covid_data.csv")
+    df[['Confirmed', 'Deaths', 'Recovered']] = df[['Confirmed', 'Deaths', 'Recovered']].fillna(0)
+    return df
 
-# -----------------------------
-# TOP 10 COUNTRIES SECTION
-# -----------------------------
-st.subheader("Top 10 Countries by Confirmed Cases")
+data = load_data()
+
+# ----------------------
+# Sidebar Filter
+# ----------------------
+st.sidebar.header("Filter Options")
+
+countries = ["All"] + sorted(data["Country/Region"].unique())
+selected_country = st.sidebar.selectbox("Select Country / Region", countries)
+
+if selected_country != "All":
+    filtered_data = data[data["Country/Region"] == selected_country]
+else:
+    filtered_data = data
+
+# ----------------------
+# Data Table
+# ----------------------
+st.subheader("📋 COVID-19 Data Table")
+st.dataframe(filtered_data)
+
+st.markdown("---")
+
+# ----------------------
+# Top 10 Countries Table
+# ----------------------
+st.subheader("🏆 Top 10 Countries by Confirmed Cases")
 
 top10 = data.sort_values(by="Confirmed", ascending=False).head(10)
 st.dataframe(top10)
 
-st.subheader("Confirmed Cases Chart")
-st.bar_chart(top10.set_index("Country/Region")["Confirmed"])
+st.markdown("---")
+
+# ----------------------
+# Bar Chart
+# ----------------------
+st.subheader("📊 COVID-19 Cases Comparison (Top 10)")
+
+bar_fig = px.bar(
+    top10,
+    x="Country/Region",
+    y=["Confirmed", "Deaths", "Recovered"],
+    barmode="group",
+    title="Confirmed vs Deaths vs Recovered"
+)
+
+st.plotly_chart(bar_fig, use_container_width=True)
+
+st.markdown("---")
+
+# ----------------------
+# Line Chart
+# ----------------------
+st.subheader("📈 Confirmed vs Deaths Trend")
+
+line_fig = px.line(
+    top10,
+    x="Country/Region",
+    y=["Confirmed", "Deaths"],
+    markers=True,
+    title="Confirmed vs Deaths (Top 10 Countries)"
+)
+
+st.plotly_chart(line_fig, use_container_width=True)
 
